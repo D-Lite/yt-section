@@ -231,7 +231,7 @@ export default function Home() {
       <footer className="bg-gray-800 text-white py-4 mt-auto">
         <div className="container mx-auto text-center">
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} Your Name. All rights reserved.
+            &copy; {new Date().getFullYear()}. OSS.
             <br />
             Made with ❤️ by <a href="https://twitter.com/danielolabemiwo" target="_blank" rel="noopener noreferrer" className="text-blue-400">Daniel Olabemiwo</a>
           </p>
