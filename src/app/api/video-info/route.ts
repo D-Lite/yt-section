@@ -13,9 +13,18 @@ export async function POST(request: Request) {
         if (!ytdl.validateURL(url)) {
             return NextResponse.json({ error: 'Invalid YouTube URL' }, { status: 400 });
         }
+         
+        let proxyConnectionString = `[REDACTED]`;
+    let agent = ytdl.createProxyAgent({
+      uri: proxyConnectionString,
+    });
+
+    const info = await ytdl.getInfo(url, {
+        agent: agent,
+        playerClients: ["IOS", "WEB_CREATOR"]
+      })
           
-          
-        const info = await ytdl.getBasicInfo(url);
+        // const info = await ytdl.getBasicInfo(url);
         const formats = info.formats
             .filter((format: ytdl.videoFormat) => format.hasVideo && format.hasAudio)
             .map((format: ytdl.videoFormat) => ({
