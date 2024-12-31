@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { getRandomIPv6 } from '@distube/ytdl-core/lib/utils';
+// import { getRandomIPv6 } from '@distube/ytdl-core/lib/utils';
 
 export async function POST(request: Request) {
     try {
@@ -13,12 +13,9 @@ export async function POST(request: Request) {
         if (!ytdl.validateURL(url)) {
             return NextResponse.json({ error: 'Invalid YouTube URL' }, { status: 400 });
         }
-        const agentForARandomIP = ytdl.createAgent(undefined, {
-            localAddress: getRandomIPv6("2001:2::/48"),
-          });
           
           
-        const info = await ytdl.getBasicInfo(url, { agent: agentForARandomIP });
+        const info = await ytdl.getBasicInfo(url);
         const formats = info.formats
             .filter((format: ytdl.videoFormat) => format.hasVideo && format.hasAudio)
             .map((format: ytdl.videoFormat) => ({
