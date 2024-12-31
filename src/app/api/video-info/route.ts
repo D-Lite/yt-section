@@ -14,13 +14,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid YouTube URL' }, { status: 400 });
         }
          
-        let proxyConnectionString = `[REDACTED]`;
-    let agent = ytdl.createProxyAgent({
-      uri: proxyConnectionString,
-    });
+    //     let proxyConnectionString = process.env.PROXY_CONNECTION_STRING || 'default_connection_string';
+    // let agent = ytdl.createProxyAgent({
+    //   uri: proxyConnectionString,
+    // });
 
     const info = await ytdl.getInfo(url, {
-        agent: agent,
+        // agent: agent,
         playerClients: ["IOS", "WEB_CREATOR"]
       })
           
