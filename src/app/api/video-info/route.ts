@@ -19,8 +19,6 @@ export async function POST(request: Request) {
           });
           
         const ydl_opts = {
-            quiet: true, 
-            'skip_download': true,
             agent: agentForARandomIP
         }
         
