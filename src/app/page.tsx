@@ -29,7 +29,7 @@ export default function Home() {
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [timeFormat, setTimeFormat] = useState<'seconds' | 'hh:mm:ss'>('seconds');
 
-  const { register, handleSubmit, formState: { errors }, getValues } = useForm({
+  const { register, handleSubmit, getValues } = useForm({
     defaultValues: {
       url: '',
       startTime: '',
@@ -52,14 +52,14 @@ export default function Home() {
 
       const data = await response.json();
       setVideoInfo(data);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch video information');
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: { url: string; startTime: string; endTime: string; }) => {
     try {
       setLoading(true);
       setError(null);
@@ -96,7 +96,7 @@ export default function Home() {
 
       setDownloadProgress(100);
       alert('Video downloaded successfully.');
-    } catch (err) {
+    } catch {
       setError('Download failed');
     } finally {
       setLoading(false);
@@ -129,7 +129,7 @@ export default function Home() {
             <p className="mb-4 text-gray-700">
               This application allows you to download YouTube videos by providing the video URL.
               You can specify the start and end times for the video segment you want to download.
-              Simply enter the URL, select the desired time format, and click "Download" to get your video!
+              Simply enter the URL, select the desired time format, and click Download to get your video!
             </p>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
