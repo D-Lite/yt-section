@@ -30,7 +30,7 @@ export default function RootLayout({
       >
         {children}
       </body>
-      <GoogleTagManager gtmId={process.env.NEXT_GTM!} />
+      <GoogleTagManager gtmId={"G-TGSR8YCFJJ"} />
     </html>
   );
 }
