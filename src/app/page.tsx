@@ -143,7 +143,7 @@ export default function Home() {
                   <Button
                     type="button"
                     onClick={() => fetchVideoInfo(getValues('url'))}
-                    disabled={loading || !getValues('url')}
+                    disabled={loading}
                   >
                     {loading ? <Loader2 className="animate-spin" /> : 'Fetch Info'}
                   </Button>
