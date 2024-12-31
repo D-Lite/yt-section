@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unlink, readFile } from 'fs/promises';
 import path from 'path';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import ytdl from 'ytdl-core';
 import ffmpeg from 'fluent-ffmpeg';
