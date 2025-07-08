@@ -1,66 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink, readFile } from 'fs/promises';
-import path from 'path';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import ytdl from 'ytdl-core';
-import ffmpeg from 'fluent-ffmpeg';
+import { 
+    validateYouTubeURL, 
+    getVideoInfo, 
+    createDownloadStream, 
+    sanitizeFilename, 
+    handleYouTubeError 
+} from '@/lib/youtube-utils';
 
 export async function POST(request: NextRequest) {
     try {
         const { url, startTime, endTime, quality } = await request.json();
 
-        if (!ytdl.validateURL(url)) {
+        if (!validateYouTubeURL(url)) {
             return NextResponse.json({ error: 'Invalid YouTube URL' }, { status: 400 });
         }
 
-        const info = await ytdl.getInfo(url);
-        const videoTitle = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+        console.log('Getting video info...');
+        const videoInfo = await getVideoInfo(url);
+        const videoTitle = sanitizeFilename(videoInfo.title);
 
-        const finalStartTime = (startTime);
-        const finalEndTime = (endTime);
+        const finalStartTime = startTime || 0;
+        const finalEndTime = endTime || 0;
         const duration = finalEndTime - finalStartTime;
 
-        if (duration <= 0) {
+        if (duration < 0) {
             return NextResponse.json({ error: 'Invalid duration' }, { status: 400 });
         }
-        const randomString = Math.random().toString(36).substr(2, 9);
-        const tempFileName = `${videoTitle}-${randomString}.mp4`;
-        const tempFilePath = path.join('/tmp', tempFileName);
 
-        // Download and process video
-        await new Promise((resolve, reject) => {
-            ffmpeg()
-                .input(ytdl(url, {
-                    quality: quality || 'highest',
-                    filter: 'videoandaudio'
-                }))
-                .setStartTime(finalStartTime)
-                .setDuration(duration)
-                .output(tempFilePath)
-                .on('end', resolve)
-                .on('error', (err) => {
-                    console.error('FFmpeg error:', err);
-                    reject(err);
-                })
-                .run();
+        const tempFileName = `${videoTitle}.mp4`;
+
+        console.log('Starting video download...');
+        
+        // For cloud deployment, we'll stream the response directly
+        // This avoids file system issues and memory constraints
+        const stream = createDownloadStream(url, { quality });
+
+        // Create a readable stream that can be returned as a response
+        const readable = new ReadableStream({
+            start(controller) {
+                stream.on('data', (chunk) => {
+                    controller.enqueue(chunk);
+                });
+                
+                stream.on('end', () => {
+                    controller.close();
+                });
+                
+                stream.on('error', (error) => {
+                    console.error('Stream error:', error);
+                    controller.error(error);
+                });
+            }
         });
 
-        // Read the file content
-        const fileContent = await readFile(tempFilePath);
-
-        // Delete the temporary file after reading its content
-        await unlink(tempFilePath);
-
-        // Return the file as a downloadable response
-        return new NextResponse(fileContent, {
+        // Return the stream as a downloadable response
+        return new NextResponse(readable, {
             headers: {
                 'Content-Type': 'video/mp4',
                 'Content-Disposition': `attachment; filename="${tempFileName}"`,
+                'Cache-Control': 'no-cache',
+                'Transfer-Encoding': 'chunked'
             },
         });
     } catch (error) {
-        console.error('Error:', error);
-        return NextResponse.json({ error: 'Download failed' }, { status: 500 });
+        console.error('Download error:', error);
+        
+        const errorResponse = handleYouTubeError(error);
+        return NextResponse.json(errorResponse, { status: errorResponse.status });
     }
 }
