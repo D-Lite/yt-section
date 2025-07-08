@@ -209,7 +209,7 @@ export default function Home() {
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Step 1:</strong> Enter a YouTube URL and click "Fetch Video Info" to get video details.
+                      <strong>Step 1:</strong> Enter a YouTube URL and click <strong>Fetch Video Info</strong> to get video details.
                     </AlertDescription>
                   </Alert>
                   
