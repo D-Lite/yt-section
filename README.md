@@ -1,43 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YouTube Video Downloader
 
-## Getting Started
+A robust YouTube video downloader built with Next.js, featuring video trimming capabilities and optimized for VPS deployment.
 
-First, run the development server:
+## Features
+
+- ✅ **Video Download**: Download YouTube videos in various qualities
+- ✅ **Video Trimming**: Server-side video trimming with FFmpeg
+- ✅ **Multiple Formats**: Support for different time formats (seconds, hh:mm:ss)
+- ✅ **Robust Error Handling**: Fallback mechanisms for YouTube parsing issues
+- ✅ **Progress Tracking**: Real-time download progress
+- ✅ **VPS Optimized**: Designed for Coolify and other VPS platforms
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Styling**: Tailwind CSS, Radix UI
+- **Video Processing**: FFmpeg, fluent-ffmpeg
+- **YouTube Download**: @distube/ytdl-core, ytdl-core
+- **Deployment**: Coolify, Docker, Nixpacks
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- FFmpeg (installed automatically via nixpacks)
+- Git
+
+### Local Development
 
 ```bash
+# Clone the repository
+git clone <your-repo-url>
+cd ytdownload
+
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### VPS Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This application is optimized for VPS deployment with Coolify. See [VPS_DEPLOYMENT.md](./VPS_DEPLOYMENT.md) for detailed deployment instructions.
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+1. **Enter YouTube URL**: Paste a valid YouTube video URL
+2. **Fetch Video Info**: Click "Fetch Info" to get video details
+3. **Set Time Range** (Optional): Specify start and end times for trimming
+4. **Download**: Click "Download" to get your video
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `POST /api/video-info` - Get video information
+- `POST /api/download` - Download video (with optional trimming)
+- `GET /api/status` - System health check
 
-## Deploy on Vercel
+## Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Environment Variables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```env
+NODE_ENV=production
+NEXT_TELEMETRY_DISABLED=1
+```
 
+## License
 
-## Pipeline
-Add support for TikTok 
-Add support for Twitter
-Add support for IG
-Open source
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## Support
+
+For issues and questions, please check the [VPS_DEPLOYMENT.md](./VPS_DEPLOYMENT.md) guide or open an issue on GitHub.

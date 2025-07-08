@@ -1,0 +1,28 @@
+{
+  "name": "youtube-downloader",
+  "type": "application",
+  "buildPack": "nixpacks",
+  "port": 3000,
+  "healthCheckPath": "/api/status",
+  "healthCheckInterval": 30,
+  "restartPolicy": "always",
+  "environment": {
+    "NODE_ENV": "production",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "volumes": [
+    {
+      "source": "/tmp",
+      "target": "/tmp",
+      "type": "bind"
+    }
+  ],
+  "resources": {
+    "cpu": "1",
+    "memory": "2Gi",
+    "storage": "10Gi"
+  },
+  "buildArgs": {
+    "NODE_VERSION": "18"
+  }
+} 

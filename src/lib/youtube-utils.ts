@@ -5,6 +5,8 @@ import ytdlOriginal from 'ytdl-core';
 export interface VideoInfo {
     title: string;
     thumbnail: string;
+    duration: number; // Duration in seconds
+    durationFormatted: string; // Duration in HH:MM:SS format
     availableQualities: Array<{
         qualityLabel: string;
         itag: number;
@@ -17,6 +19,15 @@ export interface DownloadOptions {
     quality?: string;
     startTime?: number;
     endTime?: number;
+}
+
+export interface VideoFormat {
+    hasVideo: boolean;
+    hasAudio: boolean;
+    qualityLabel?: string;
+    itag: number;
+    container: string;
+    fps?: number;
 }
 
 // Helper function to sleep for a given number of milliseconds
@@ -90,9 +101,9 @@ export async function getVideoInfo(url: string, retryCount: number = 2): Promise
 
         // Filter formats that have both video and audio
         const formats = info.formats
-            .filter((format: any) => format.hasVideo && format.hasAudio)
-            .map((format: any) => ({
-                qualityLabel: format.qualityLabel,
+            .filter((format: VideoFormat) => format.hasVideo && format.hasAudio)
+            .map((format: VideoFormat) => ({
+                qualityLabel: format.qualityLabel || 'Unknown',
                 itag: format.itag,
                 container: format.container,
                 fps: format.fps
@@ -101,6 +112,8 @@ export async function getVideoInfo(url: string, retryCount: number = 2): Promise
         return {
             title: info.videoDetails.title,
             thumbnail: info.videoDetails.thumbnails[0]?.url || '',
+            duration: parseInt(info.videoDetails.lengthSeconds) || 0,
+            durationFormatted: info.videoDetails.lengthSeconds ? formatDuration(parseInt(info.videoDetails.lengthSeconds)) : 'N/A',
             availableQualities: formats
         };
     }, retryCount);
@@ -108,19 +121,21 @@ export async function getVideoInfo(url: string, retryCount: number = 2): Promise
 
 // Helper function to create download stream with fallback
 export function createDownloadStream(url: string, options: DownloadOptions = {}) {
-    const downloadOptions: any = {
+    const downloadOptions = {
         quality: options.quality || 'highest',
-        filter: 'videoandaudio'
+        filter: 'videoandaudio' as const
     };
 
     // Try distube version first
     try {
         console.log('Attempting to create download stream with @distube/ytdl-core...');
-        return ytdl(url, downloadOptions);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return ytdl(url, downloadOptions as any);
     } catch (error) {
         console.log('@distube/ytdl-core failed, trying original ytdl-core...');
         try {
-            return ytdlOriginal(url, downloadOptions);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return ytdlOriginal(url, downloadOptions as any);
         } catch (fallbackError) {
             console.error('Both ytdl-core versions failed for stream creation:', { error, fallbackError });
             throw new Error('Failed to create download stream. Both libraries failed to parse YouTube\'s obfuscation.');
@@ -196,12 +211,12 @@ export function isRetryableError(error: unknown): boolean {
 }
 
 // Helper function to get recommended quality based on available formats
-export function getRecommendedQuality(formats: any[]): string {
+export function getRecommendedQuality(formats: VideoFormat[]): string {
     // Prefer 720p if available
     const preferredQualities = ['720p', '480p', '360p', '240p'];
     
     for (const quality of preferredQualities) {
-        const format = formats.find((f: any) => f.qualityLabel?.includes(quality));
+        const format = formats.find((f: VideoFormat) => f.qualityLabel?.includes(quality));
         if (format) {
             return format.itag.toString();
         }
@@ -209,4 +224,12 @@ export function getRecommendedQuality(formats: any[]): string {
     
     // Fallback to highest available
     return 'highest';
+} 
+
+// Helper function to format duration in seconds to HH:MM:SS
+function formatDuration(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 } 

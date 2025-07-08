@@ -15,6 +15,8 @@ export async function POST(request: Request) {
         return NextResponse.json({
             title: videoInfo.title,
             thumbnail: videoInfo.thumbnail,
+            duration: videoInfo.duration,
+            durationFormatted: videoInfo.durationFormatted,
             availableQualities: videoInfo.availableQualities
         });
     } catch (error) {
