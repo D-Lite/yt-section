@@ -81,8 +81,9 @@ function extractVideoId(url: string): string | null {
 }
 
 // Helper function to get video info using YouTube Data API (fallback)
-async function getVideoInfoFromAPI(videoId: string): Promise<Partial<VideoInfo> | null> {
+async function getVideoInfoFromAPI(videoId?: string): Promise<Partial<VideoInfo> | null> {
     // TODO: Implement this
+    console.log('getVideoInfoFromAPI', videoId);
     return null;
 }
 
