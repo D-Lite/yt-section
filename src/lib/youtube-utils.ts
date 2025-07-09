@@ -30,9 +30,71 @@ export interface VideoFormat {
     fps?: number;
 }
 
+// User agents to rotate through to avoid bot detection
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0'
+];
+
+// Simple rate limiting - track last request time
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 2000; // Minimum 2 seconds between requests
+
+// Helper function to get a random user agent
+function getRandomUserAgent(): string {
+    return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+// Helper function to enforce rate limiting
+async function enforceRateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+        const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+        console.log(`Rate limiting: waiting ${waitTime}ms before next request`);
+        await sleep(waitTime);
+    }
+    
+    lastRequestTime = Date.now();
+}
+
+// Helper function to extract video ID from YouTube URL
+function extractVideoId(url: string): string | null {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /youtube\.com\/v\/([^&\n?#]+)/,
+        /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) {
+            return match[1];
+        }
+    }
+    
+    return null;
+}
+
+// Helper function to get video info using YouTube Data API (fallback)
+async function getVideoInfoFromAPI(videoId: string): Promise<Partial<VideoInfo> | null> {
+    // TODO: Implement this
+    return null;
+}
+
 // Helper function to sleep for a given number of milliseconds
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Helper function to add random delay between requests
+async function randomDelay(minMs: number = 1000, maxMs: number = 3000): Promise<void> {
+    const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    await sleep(delay);
 }
 
 // Helper function to retry with exponential backoff
@@ -57,8 +119,20 @@ async function retryWithBackoff<T>(
                 throw lastError;
             }
             
-            const delay = baseDelay * Math.pow(2, attempt);
-            console.log(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+            // Use longer delays for bot detection errors
+            let delay: number;
+            const errorMessage = lastError.message;
+            
+            if (errorMessage.includes('Sign in to confirm you\'re not a bot') || 
+                errorMessage.includes('Status code: 410') ||
+                errorMessage.includes('detecting automated requests')) {
+                delay = baseDelay * Math.pow(3, attempt) + Math.random() * 5000;
+                console.log(`Bot detection detected on attempt ${attempt + 1}, waiting ${Math.round(delay/1000)}s before retry...`);
+            } else {
+                delay = baseDelay * Math.pow(2, attempt);
+                console.log(`Attempt ${attempt + 1} failed, retrying in ${Math.round(delay/1000)}s...`);
+            }
+            
             await sleep(delay);
         }
     }
@@ -81,18 +155,79 @@ export async function getVideoInfo(url: string, retryCount: number = 2): Promise
         let info;
         let usedLibrary = '';
 
-        // Try distube version first
+        // Enforce rate limiting and add random delay before making requests
+        await enforceRateLimit();
+        await randomDelay(500, 1500);
+
+        // Try distube version first with custom headers
         try {
             console.log('Attempting to get video info with @distube/ytdl-core...');
-            info = await ytdl.getInfo(url);
+            const userAgent = getRandomUserAgent();
+            info = await ytdl.getInfo(url, {
+                requestOptions: {
+                    headers: {
+                        'User-Agent': userAgent,
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'DNT': '1',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                    }
+                }
+            });
             usedLibrary = '@distube/ytdl-core';
         } catch (error) {
             console.log('@distube/ytdl-core failed, trying original ytdl-core...');
             try {
-                info = await ytdlOriginal.getInfo(url);
+                // Add another random delay before trying the fallback
+                await randomDelay(1000, 2000);
+                const userAgent = getRandomUserAgent();
+                info = await ytdlOriginal.getInfo(url, {
+                    requestOptions: {
+                        headers: {
+                            'User-Agent': userAgent,
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Accept-Language': 'en-US,en;q=0.5',
+                            'Accept-Encoding': 'gzip, deflate',
+                            'DNT': '1',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1',
+                        }
+                    }
+                });
                 usedLibrary = 'ytdl-core';
             } catch (fallbackError) {
                 console.error('Both ytdl-core versions failed:', { error, fallbackError });
+                
+                // Check for specific bot detection errors
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+                
+                if (errorMessage.includes('Sign in to confirm you\'re not a bot') || 
+                    fallbackErrorMessage.includes('Sign in to confirm you\'re not a bot') ||
+                    errorMessage.includes('Status code: 410') ||
+                    fallbackErrorMessage.includes('Status code: 410')) {
+                    
+                    // Try to get basic info from video ID as last resort
+                    const videoId = extractVideoId(url);
+                    if (videoId) {
+                        console.log('Attempting to get basic info from video ID...');
+                        const basicInfo = await getVideoInfoFromAPI(videoId);
+                        if (basicInfo) {
+                            return {
+                                title: basicInfo.title || 'Unknown Title',
+                                thumbnail: basicInfo.thumbnail || '',
+                                duration: basicInfo.duration || 0,
+                                durationFormatted: basicInfo.durationFormatted || 'N/A',
+                                availableQualities: basicInfo.availableQualities || []
+                            };
+                        }
+                    }
+                    
+                    throw new Error('YouTube is detecting automated requests. Please try again later or use a different video.');
+                }
+                
                 throw new Error(`Failed to get video info. Both libraries failed to parse YouTube's obfuscation.`);
             }
         }
@@ -123,7 +258,18 @@ export async function getVideoInfo(url: string, retryCount: number = 2): Promise
 export function createDownloadStream(url: string, options: DownloadOptions = {}) {
     const downloadOptions = {
         quality: options.quality || 'highest',
-        filter: 'videoandaudio' as const
+        filter: 'videoandaudio' as const,
+        requestOptions: {
+            headers: {
+                'User-Agent': getRandomUserAgent(),
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+            }
+        }
     };
 
     // Try distube version first
@@ -138,6 +284,18 @@ export function createDownloadStream(url: string, options: DownloadOptions = {})
             return ytdlOriginal(url, downloadOptions as any);
         } catch (fallbackError) {
             console.error('Both ytdl-core versions failed for stream creation:', { error, fallbackError });
+            
+            // Check for specific bot detection errors
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+            
+            if (errorMessage.includes('Sign in to confirm you\'re not a bot') || 
+                fallbackErrorMessage.includes('Sign in to confirm you\'re not a bot') ||
+                errorMessage.includes('Status code: 410') ||
+                fallbackErrorMessage.includes('Status code: 410')) {
+                throw new Error('YouTube is detecting automated requests. Please try again later or use a different video.');
+            }
+            
             throw new Error('Failed to create download stream. Both libraries failed to parse YouTube\'s obfuscation.');
         }
     }
@@ -151,6 +309,15 @@ export function sanitizeFilename(filename: string): string {
 // Helper function to handle specific YouTube parsing errors
 export function handleYouTubeError(error: unknown): { error: string; details: string; status: number } {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Handle bot detection errors
+    if (errorMessage.includes('Sign in to confirm you\'re not a bot') || errorMessage.includes('Status code: 410')) {
+        return {
+            error: 'YouTube is detecting automated requests. Please try again later or use a different video.',
+            details: 'Bot detection triggered - YouTube is blocking automated requests',
+            status: 429
+        };
+    }
     
     if (errorMessage.includes('Could not parse decipher function')) {
         return {
@@ -204,6 +371,18 @@ export function isRetryableError(error: unknown): boolean {
         'ETIMEDOUT',
         'ENOTFOUND'
     ];
+    
+    // Bot detection errors are retryable but with longer delays (handled in retryWithBackoff)
+    const retryableBotErrors = [
+        'Sign in to confirm you\'re not a bot',
+        'Status code: 410',
+        'detecting automated requests'
+    ];
+    
+    // Check if it's a bot detection error - these are retryable with longer delays
+    if (retryableBotErrors.some(botError => errorMessage.includes(botError))) {
+        return true;
+    }
     
     return retryableErrors.some(retryableError => 
         errorMessage.includes(retryableError)

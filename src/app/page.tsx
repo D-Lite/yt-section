@@ -34,6 +34,7 @@ interface ErrorResponse {
 export default function Home() {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [timeFormat, setTimeFormat] = useState<'seconds' | 'hh:mm:ss'>('seconds');
@@ -57,6 +58,7 @@ export default function Home() {
   const fetchVideoInfo = async (url: string) => {
     try {
       setLoading(true);
+      setLoadingMessage('Fetching video information...');
       setError(null);
       setVideoInfo(null); // Reset video info
 
@@ -76,6 +78,7 @@ export default function Home() {
       console.log('Setting videoInfo state to:', data);
       setVideoInfo(data);
       setStep('metadata'); // Move to metadata step
+      setLoadingMessage(''); // Clear loading message
       console.log('State should now be updated');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch video information';
@@ -83,6 +86,7 @@ export default function Home() {
       setStep('url'); // Stay on URL step if error
     } finally {
       setLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -94,6 +98,7 @@ export default function Home() {
 
     try {
       setLoading(true);
+      setLoadingMessage('Preparing download...');
       setError(null);
       setDownloadProgress(0);
       setStep('download');
@@ -141,6 +146,7 @@ export default function Home() {
       setStep('metadata'); // Go back to metadata step if download fails
     } finally {
       setLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -210,6 +216,11 @@ export default function Home() {
                     <Info className="h-4 w-4" />
                     <AlertDescription>
                       <strong>Step 1:</strong> Enter a YouTube URL and click <strong>Fetch Video Info</strong> to get video details.
+                      <br />
+                      <span className="text-xs text-gray-600 mt-1">
+                        💡 <strong>Tip:</strong> If you encounter bot detection errors, try waiting a few minutes before retrying 
+                        {/* or use a different video. */}
+                      </span>
                     </AlertDescription>
                   </Alert>
                   
@@ -237,6 +248,9 @@ export default function Home() {
                         {loading ? <Loader2 className="animate-spin" /> : 'Fetch Video Info'}
                       </Button>
                     </div>
+                    {loading && loadingMessage && (
+                      <p className="text-sm text-gray-600 mt-2">{loadingMessage}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -364,8 +378,20 @@ export default function Home() {
               )}
 
               {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert variant={error.includes('detecting automated requests') ? "default" : "destructive"}>
+                  <AlertDescription>
+                    {error}
+                    {error.includes('detecting automated requests') && (
+                      <div className="mt-2 text-sm">
+                        <strong>What you can do:</strong>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>Wait 2-3 minutes before trying again</li>
+                          <li>Try a different YouTube video</li>
+                          <li>Check if the video is available in your region</li>
+                        </ul>
+                      </div>
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
             </form>
